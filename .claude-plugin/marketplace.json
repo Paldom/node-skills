@@ -1,0 +1,15 @@
+{
+  "name": "node-skills",
+  "owner": {
+    "name": "Paldom",
+    "url": "https://github.com/Paldom"
+  },
+  "plugins": [
+    {
+      "name": "node-skills",
+      "source": ".",
+      "description": "Agent Skills for maintaining high-quality open-source Node.js, TypeScript, Next.js, and React apps and packages - linting, type safety, testing, packaging and releases, and CI quality gates.",
+      "category": "development"
+    }
+  ]
+}
