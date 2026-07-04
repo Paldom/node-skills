@@ -1,4 +1,38 @@
 {
   "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
-  "notGrouped": "bottom"
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Write it right",
+      "description": "Linting, strict TypeScript, and tests that fail loudly - the gates that catch defects before review does.",
+      "skills": [
+        "node-lint",
+        "node-typescript",
+        "node-testing"
+      ]
+    },
+    {
+      "title": "Ship to npm",
+      "description": "From exports map to signed release: packages that resolve for every consumer and publish with provenance, no stored tokens.",
+      "skills": [
+        "node-packaging",
+        "node-release"
+      ]
+    },
+    {
+      "title": "Guard the pipeline",
+      "description": "CI that fails closed and dependencies that cannot sneak malware in - engines-derived matrices, cooldowns, pinned actions.",
+      "skills": [
+        "node-ci",
+        "node-supply-chain"
+      ]
+    },
+    {
+      "title": "Next.js, production-grade",
+      "description": "App Router hardening: server/client boundaries, Next-native lint, and bundle work that is measured, not vibes.",
+      "skills": [
+        "nextjs-quality"
+      ]
+    }
+  ]
 }

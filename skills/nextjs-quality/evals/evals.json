@@ -1,0 +1,50 @@
+{
+  "skill": "nextjs-quality",
+  "cases": [
+    { "type": "should_trigger", "prompt": "harden our next.config for production" },
+    { "type": "should_trigger", "prompt": "set up linting for our next.js app" },
+    { "type": "should_trigger", "prompt": "the next build bundle is huge, analyze it" },
+    { "type": "should_trigger", "prompt": "fix the RSC / use client boundaries in this app" },
+    { "type": "should_trigger", "prompt": "enable react strict mode and typed routes" },
+    { "type": "should_trigger", "prompt": "next.js app quality checkup" },
+    { "type": "should_trigger", "prompt": "images load slowly in our nextjs app, fix the setup" },
+    { "type": "should_trigger", "prompt": "app router best practices for this project" },
+    { "type": "should_trigger", "prompt": "make our next app production-ready" },
+    { "type": "should_not_trigger", "prompt": "set up biome for a node library" },
+    { "type": "should_not_trigger", "prompt": "configure vitest coverage" },
+    { "type": "should_not_trigger", "prompt": "package this library for npm" },
+    { "type": "should_not_trigger", "prompt": "add a node version matrix to CI" },
+    { "type": "should_not_trigger", "prompt": "deploy the app to vercel" },
+    { "type": "should_not_trigger", "prompt": "write a new react component for the dashboard" },
+    { "type": "should_not_trigger", "prompt": "audit npm dependencies" },
+    { "type": "should_not_trigger", "prompt": "cut a release of our design system" },
+    {
+      "type": "quality",
+      "prompt": "make this next.js app production-ready",
+      "expected_behavior": [
+        "audits the current next.config and applies hardening with rationale (strict mode, typed routes where stable, image config, output mode fit for the deploy target)",
+        "uses eslint-config-next flat config for Next/RSC rules instead of generic lint setups",
+        "runs bundle analysis and reports the top actionable wins rather than generic advice",
+        "verifies next build passes after every change"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "we get hydration and 'use client' errors everywhere",
+      "expected_behavior": [
+        "explains the server/client boundary model and finds the actual offending imports rather than sprinkling use client",
+        "moves client-only code behind minimal client components; keeps data fetching server-side",
+        "adds the lint rules that catch boundary violations going forward"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "nextjs bundle is 2MB of JS, shrink it",
+      "expected_behavior": [
+        "measures first (bundle analyzer) and identifies the heaviest imports with evidence",
+        "applies real fixes: dynamic imports, server components for static parts, tree-shakeable imports, image/font optimization",
+        "re-measures and reports the delta"
+      ]
+    }
+  ]
+}

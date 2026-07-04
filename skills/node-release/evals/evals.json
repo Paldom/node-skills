@@ -1,0 +1,50 @@
+{
+  "skill": "node-release",
+  "cases": [
+    { "type": "should_trigger", "prompt": "automate releases for this npm package" },
+    { "type": "should_trigger", "prompt": "set up changesets" },
+    { "type": "should_trigger", "prompt": "publish to npm from CI without tokens" },
+    { "type": "should_trigger", "prompt": "configure npm trusted publishing" },
+    { "type": "should_trigger", "prompt": "changesets or semantic-release for this monorepo?" },
+    { "type": "should_trigger", "prompt": "cut a release with a changelog" },
+    { "type": "should_trigger", "prompt": "add provenance to our npm publishes" },
+    { "type": "should_trigger", "prompt": "version bump + tag + publish automation pls" },
+    { "type": "should_trigger", "prompt": "our release workflow leaks an npm token, fix it" },
+    { "type": "should_not_trigger", "prompt": "fix the package.json exports" },
+    { "type": "should_not_trigger", "prompt": "bundle the library with tsdown" },
+    { "type": "should_not_trigger", "prompt": "set up the CI test matrix" },
+    { "type": "should_not_trigger", "prompt": "add coverage thresholds" },
+    { "type": "should_not_trigger", "prompt": "audit our dependencies" },
+    { "type": "should_not_trigger", "prompt": "protect the main branch" },
+    { "type": "should_not_trigger", "prompt": "write the changelog entry for this PR" },
+    { "type": "should_not_trigger", "prompt": "deploy the next.js app to vercel" },
+    {
+      "type": "quality",
+      "prompt": "set up automated releases for this single-package repo",
+      "expected_behavior": [
+        "picks the right tool with rationale: Changesets for intentional human-written notes/monorepos, semantic-release for strict conventional-commit autonomous flows",
+        "configures npm trusted publishing (OIDC): id-token write permission, exact repo/workflow registration, npm >=11.5.1 and Node >=22.14 on the runner",
+        "states the bootstrap gotcha: the FIRST version of a package cannot be published via OIDC - one manual/token publish is needed before trusted publishing takes over",
+        "provenance is automatic under trusted publishing; no long-lived NPM_TOKEN anywhere"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "migrate our NPM_TOKEN-based publish workflow to OIDC",
+      "expected_behavior": [
+        "registers the trusted publisher with the exact workflow filename (case-sensitive) and warns that workflow_call indirection breaks the exact-match",
+        "keeps the old token active only during cutover, then revokes it and recommends account-level enforcement of trusted-publishing-only",
+        "verifies with a real publish or dry-run before deleting the token"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "releases keep failing halfway - tag exists but npm publish failed",
+      "expected_behavior": [
+        "diagnoses the partial-failure ordering (tag-before-publish) and makes the pipeline idempotent or reorders publish-then-tag",
+        "checks the usual suspects: OIDC config mismatch, npm/Node versions on the runner, staged-publishing gates",
+        "does not recommend force-deleting published tags (immutable-release principle)"
+      ]
+    }
+  ]
+}

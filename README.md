@@ -46,11 +46,23 @@ cp -r node-skills/skills/<skill-name> your-project/.claude/skills/
 Then just describe the task — the skill activates on its description — or invoke it
 explicitly with `/<skill-name>`.
 
+To bring a whole repository up to the quality bar in one run, paste the
+[setup prompt](docs/setup-prompt.md) — it applies the catalog in
+write-surface-safe order (parallel where safe, sequential where skills share
+`package.json`) with verifier gates and a single reviewed commit.
+
 ## Skills
 
 | Skill | Description |
 | --- | --- |
-| _none yet_ | Skills are added via the workflow in [CONTRIBUTING.md](CONTRIBUTING.md). |
+| [node-lint](skills/node-lint/) | Linting and formatting — Biome one-tool or ESLint flat config + Prettier, migrations, rule tuning, CI wiring. |
+| [node-typescript](skills/node-typescript/) | Explicit strict tsconfig — module/resolution by consumption model, declaration emit, type-check gates, incremental strictification. |
+| [node-testing](skills/node-testing/) | Vitest or node:test with explicit config — v8 coverage gates that fail CI, React Testing Library, mocking discipline. |
+| [node-packaging](skills/node-packaging/) | npm package artifacts — exports maps, ESM-first vs dual decisions, tsdown bundling, publint + arethetypeswrong gates. |
+| [node-release](skills/node-release/) | Release automation — Changesets or semantic-release, npm trusted publishing (OIDC) with provenance, first-publish bootstrap. |
+| [node-ci](skills/node-ci/) | GitHub Actions CI — engines-derived matrices, caching, pnpm without corepack, fail-closed aggregator, merge_group. |
+| [node-supply-chain](skills/node-supply-chain/) | npm supply-chain hardening — lockfile discipline, Dependabot cooldown limits, per-PM install-script policy, SHA pinning. |
+| [nextjs-quality](skills/nextjs-quality/) | Next.js App Router quality — next.config hardening, Next-native lint, RSC boundary hygiene, measured bundle optimization. |
 
 ## Repository structure
 
