@@ -49,7 +49,7 @@ explicitly with `/<skill-name>`.
 To bring a whole repository up to the quality bar in one run, paste the
 [setup prompt](docs/setup-prompt.md) — it applies the catalog in
 write-surface-safe order (parallel where safe, sequential where skills share
-`package.json`) with verifier gates and a single reviewed commit.
+`package.json`) with verifier gates; all changes stay uncommitted for your review.
 
 ## Skills
 

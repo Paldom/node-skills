@@ -38,7 +38,7 @@ and publish tarballs full of source and CI junk.
    `engines`, `packageManager` where the repo pins one.
 5. **Gate — never skip**:
    ```bash
-   bash scripts/check_package.sh
+   bash "${CLAUDE_SKILL_DIR}/scripts/check_package.sh"
    ```
    (npm pack dry-run inspection + `publint` + `arethetypeswrong` — exact
    commands in the script; it exits non-zero on any finding.)

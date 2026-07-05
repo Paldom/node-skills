@@ -39,7 +39,7 @@ checking, and reset intentional rule customizations during migrations.
    triage new findings before deleting the old config.
 4. **Verify**:
    ```bash
-   python3 scripts/check_lint_setup.py
+   python3 "${CLAUDE_SKILL_DIR}/scripts/check_lint_setup.py"
    ```
    plus a clean run of the chosen tool over the repo (`npx biome check .` or
    `npx eslint . --max-warnings=0`).

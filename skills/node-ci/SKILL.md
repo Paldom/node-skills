@@ -46,7 +46,7 @@ permissions.
    silently.
 7. **Verify**:
    ```bash
-   python3 scripts/check_workflows.py
+   python3 "${CLAUDE_SKILL_DIR}/scripts/check_workflows.py"
    ```
    then push and confirm the aggregator turns red on a deliberately failed leg
    (prove fail-closed once).

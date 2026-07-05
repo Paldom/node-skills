@@ -21,14 +21,14 @@ authenticated `gh` CLI for the CI/release steps.
 Open Claude Code at the target repo's root and paste:
 
 ```
-/goal Bring this repository up to the node-skills quality bar - detect its shape, apply the relevant skills in write-surface-safe order, verify every gate, and finish with a single reviewed commit. Work autonomously; stop only for decisions that are genuinely mine (publishing, deleting, visibility).
+/goal Bring this repository up to the node-skills quality bar - detect its shape, apply the relevant skills in write-surface-safe order, verify every gate, and finish with a change-set left for my review. Never run git commit or git push - every change stays in the working tree for me. Work autonomously; stop only for decisions that are genuinely mine (publishing, deleting, visibility).
 
 Prerequisites (verify first; stop and tell me if missing):
 - The node-skills skills resolve in this session (try /node-lint). gh CLI authenticated. Clean git status at the repo root.
 
 Phase 0 - SHAPE (read-only): determine package manager (lockfile), package.json engines, repo kind: published library, Next.js app, other app, or monorepo. Record a baseline: current lint/type/test/build commands and their pass/fail state. The shape decides which skills apply: libraries get node-packaging + node-release; Next.js apps get nextjs-quality (and skip packaging/release unless it also publishes packages).
 
-Phase 1 - PARALLEL (disjoint surfaces, two subagents; name the skill explicitly in each subagent's instructions; no subagent commits):
+Phase 1 - PARALLEL (disjoint surfaces, two subagents; name the skill explicitly in each subagent's instructions; nobody runs git):
    - Agent A -> /node-typescript: explicit tsconfig for the repo's consumption model + type-check gate. Owns tsconfig* only; package.json script additions are REPORTED back, not written.
    - Agent B -> /node-supply-chain: lockfile/CI-install discipline, dependabot.yml with cooldown+groups, per-package-manager install-script policy, SHA-pin third-party actions. Owns .github/dependabot.yml, .npmrc/.yarnrc.yml/pnpm fields, workflow pin fixes. Must finish with its audit_supply_chain.py clean or dispositioned.
 Phase 2 - SEQUENTIAL package.json chain (these all edit package.json - never parallelize them):
@@ -41,14 +41,14 @@ Phase 3 - WIRING (after 1-2, sequential):
    - /node-ci: engines-derived matrix, caching, fail-closed aggregator, merge_group; workflows must pass check_workflows.py AND the supply-chain pinning rules from Agent B.
    - libraries being published: /node-release: trusted publishing (OIDC) setup with the first-publish bootstrap stated; do NOT publish anything in this run.
 Phase 4 - VERIFY: re-run every skill's verifier script + the full command set (lint, type-check, test with coverage, build). Produce a baseline -> after table. Anything intentionally skipped is listed with its reason.
-Phase 5 - COMMIT: one orchestrator commit (owner's git identity, no AI mentions in the message), summarizing the before/after table. Push only if the branch tracking is already set up; otherwise leave the commit local and say so.
+Phase 5 - HANDOFF: leave everything uncommitted; present the before/after table and the changed-file list for my review. Never run git commit or git push.
 
 Definition of Done:
 - Every applicable skill applied with its verifier green (or findings dispositioned in writing)
 - lint + type-check + test + build all pass locally; coverage gate proven to fail when unmet
 - CI workflows schema-valid, fail-closed, supply-chain compliant
 - No package.json merge artifacts (the sequential chain is why)
-- Single clean commit with the before/after summary
+- All changes uncommitted, with the before/after summary and file list reported
 ```
 
 ## Notes

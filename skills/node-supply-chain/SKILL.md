@@ -25,7 +25,7 @@ script policies to pnpm/yarn repos where they do nothing.
 
 1. **Baseline audit**:
    ```bash
-   python3 scripts/audit_supply_chain.py
+   python3 "${CLAUDE_SKILL_DIR}/scripts/audit_supply_chain.py"
    ```
    Reports: lockfile state, CI install command, Dependabot config
    (cooldown/groups), unpinned third-party actions, install-script policy for
