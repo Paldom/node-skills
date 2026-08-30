@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.svg" alt="node-skills icon" width="128"/>
+</p>
+
 # Node Skills
 
 [![CI](https://github.com/Paldom/node-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Paldom/node-skills/actions/workflows/ci.yml)
