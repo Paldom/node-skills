@@ -1,6 +1,6 @@
 ---
 name: node-lint
-description: Sets up and tunes linting and formatting for Node/TypeScript projects - Biome as the one-tool option or ESLint flat config plus Prettier, rule tuning, eslintrc-to-flat and ESLint-to-Biome migrations, editor and CI wiring. Use when the user asks to set up or fix linting, formatting, ESLint, Biome, or Prettier. Not for Next.js apps, type checking, or test setup.
+description: Sets up and tunes the linter and formatter for Node/TypeScript - Biome as the fast one-tool option or ESLint flat config plus Prettier, rule tuning, import sorting, unused-import removal, eslintrc-to-flat and ESLint-to-Biome migrations. Use when the user asks to set up or fix linting, formatting, a slow linter, ESLint, Biome or Prettier. Not for Next.js apps, type checking, or test setup.
 license: MIT
 argument-hint: [biome|eslint|migrate|tune]
 ---

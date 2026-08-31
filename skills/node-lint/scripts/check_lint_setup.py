@@ -6,6 +6,7 @@ ERROR (exit 1): legacy .eslintrc* coexisting with flat config or any config at
 all under ESLint v10+, two formatters configured, no lint tool at all.
 WARN: scripts not wired, formatter conflicts likely. Stdlib only.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -14,13 +15,37 @@ import re
 import sys
 from pathlib import Path
 
-LEGACY = (".eslintrc", ".eslintrc.js", ".eslintrc.cjs", ".eslintrc.json", ".eslintrc.yml", ".eslintrc.yaml")
-FLAT = ("eslint.config.js", "eslint.config.mjs", "eslint.config.cjs",
-        "eslint.config.ts", "eslint.config.mts", "eslint.config.cts")
+LEGACY = (
+    ".eslintrc",
+    ".eslintrc.js",
+    ".eslintrc.cjs",
+    ".eslintrc.json",
+    ".eslintrc.yml",
+    ".eslintrc.yaml",
+)
+FLAT = (
+    "eslint.config.js",
+    "eslint.config.mjs",
+    "eslint.config.cjs",
+    "eslint.config.ts",
+    "eslint.config.mts",
+    "eslint.config.cts",
+)
 BIOME = ("biome.json", "biome.jsonc")
-PRETTIER = (".prettierrc", ".prettierrc.json", ".prettierrc.json5", ".prettierrc.yml",
-            ".prettierrc.yaml", ".prettierrc.toml", ".prettierrc.js", ".prettierrc.cjs",
-            ".prettierrc.mjs", "prettier.config.js", "prettier.config.cjs", "prettier.config.mjs")
+PRETTIER = (
+    ".prettierrc",
+    ".prettierrc.json",
+    ".prettierrc.json5",
+    ".prettierrc.yml",
+    ".prettierrc.yaml",
+    ".prettierrc.toml",
+    ".prettierrc.js",
+    ".prettierrc.cjs",
+    ".prettierrc.mjs",
+    "prettier.config.js",
+    "prettier.config.cjs",
+    "prettier.config.mjs",
+)
 
 
 def main() -> int:
@@ -51,14 +76,23 @@ def main() -> int:
         prettier.append("package.json#prettier")
 
     if legacy and flat:
-        report("ERROR", f"legacy eslintrc ({', '.join(legacy)}) coexists with flat config "
-                        f"({', '.join(flat)}) - modern ESLint loads only flat; delete the legacy files")
+        report(
+            "ERROR",
+            f"legacy eslintrc ({', '.join(legacy)}) coexists with flat config "
+            f"({', '.join(flat)}) - modern ESLint loads only flat; delete the legacy files",
+        )
     elif legacy:
-        report("ERROR", f"only legacy eslintrc found ({', '.join(legacy)}) - ESLint v10+ does not load it; "
-                        "migrate to flat config")
+        report(
+            "ERROR",
+            f"only legacy eslintrc found ({', '.join(legacy)}) - ESLint v10+ does not load it; "
+            "migrate to flat config",
+        )
     if biome and (flat or legacy):
-        report("WARN", "both Biome and ESLint configured - deliberate split setups are fine, "
-                       "accidental overlap is not; confirm each tool's scope is disjoint")
+        report(
+            "WARN",
+            "both Biome and ESLint configured - deliberate split setups are fine, "
+            "accidental overlap is not; confirm each tool's scope is disjoint",
+        )
     biome_formats = False
     if biome:
         raw = (root / biome[0]).read_text(encoding="utf-8", errors="replace")
@@ -73,7 +107,10 @@ def main() -> int:
             biome_formats = True
             report("WARN", f"{biome[0]} could not be parsed - assuming its formatter is enabled")
     if biome_formats and prettier:
-        report("ERROR", f"two formatters configured (Biome formatter + {', '.join(prettier)}) - pick one")
+        report(
+            "ERROR",
+            f"two formatters configured (Biome formatter + {', '.join(prettier)}) - pick one",
+        )
 
     if not (biome or flat or legacy):
         report("ERROR", "no lint tool configured (no biome.json, no eslint config)")
@@ -87,7 +124,11 @@ def main() -> int:
     if flat and "--max-warnings" not in joined:
         report("WARN", "ESLint scripts do not use --max-warnings=0 - warnings will rot")
 
-    for name, ok in (("biome", bool(biome)), ("eslint flat", bool(flat)), ("prettier", bool(prettier))):
+    for name, ok in (
+        ("biome", bool(biome)),
+        ("eslint flat", bool(flat)),
+        ("prettier", bool(prettier)),
+    ):
         if ok:
             print(f"INFO: {name} config present")
     print(f"{'FAIL' if errors else 'OK'}: {errors} error(s)")

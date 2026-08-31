@@ -1,6 +1,6 @@
 ---
 name: node-typescript
-description: Configures TypeScript for Node libraries and apps - explicit strict tsconfig, module and moduleResolution choices, verbatimModuleSyntax, isolatedDeclarations, declaration emit for publishing, tsc type-check gates, incremental strictification. Use when the user asks to set up TypeScript, tighten tsconfig, or fix declaration output. Not for lint rules, bundling, or package exports resolution.
+description: Configures TypeScript for Node libraries and apps - strict tsconfig, module and moduleResolution choices, verbatimModuleSyntax, isolatedDeclarations, declaration emit. Use when the user asks to set up TypeScript, tighten tsconfig, add a tsc type-check step that fails the build, or fix declaration output. Not for lint rules, bundling, or package exports.
 license: MIT
 argument-hint: [library|app|strictify]
 ---
