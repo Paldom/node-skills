@@ -3,7 +3,7 @@
 Scope: quality/setup of a Next.js **App Router** app — lint wiring, `next.config`
 hardening, RSC/client boundary hygiene, bundle/image/font optimization, env
 validation, and the build verification loop. Version-sensitive claims below are
-current **as of mid-2026, Next.js 16.2.x** — re-verify against the linked
+current **as of September 2026, Next.js 16.3.x** — re-verify against the linked
 official docs before acting on them in a different major.
 
 ## Contents
@@ -24,7 +24,12 @@ official docs before acting on them in a different major.
 
 As of mid-2026 (verify: https://nextjs.org/docs/app/guides/upgrading/version-16):
 
-- Current major is **Next.js 16** (16.2.x). Requires **Node.js >= 20.9** and
+- Current major is **Next.js 16** (16.3.x; 16.3.3 of 2026-08-25 fixed two critical
+  unauthenticated RCEs — one patch *disables AVIF image optimization*, a behavior
+  change inside a patch version; the Windows filesystem CVE has no workaround —
+  so audit the installed *patch*, not just the major, before signing off
+  hardening). Requires **Node.js >= 20.9** (an EOL line — this collection's CI
+  matrix starts at 22) and
   **TypeScript >= 5.1**.
 - **Turbopack is the default** for `next dev` and `next build`. A custom
   `webpack` config makes `next build` **fail**; opt out with `next build --webpack`
@@ -46,9 +51,12 @@ As of Next.js 16, `next lint` and the `eslint` key in `next.config` are
 - Install: `npm i -D eslint eslint-config-next`.
 - Use **flat config** (`eslint.config.mjs`). `@next/eslint-plugin-next`
   defaults to flat config; ESLint v10 drops legacy `.eslintrc`.
-- Migrate an old setup with `npx @next/codemod@canary next-lint-to-eslint-cli .`.
+- Migrate an old setup with `npx @next/codemod@canary next-lint-to-eslint-cli .`
+  — it rewrites `package.json` and creates `eslint.config.mjs` but **never
+  touches CI**, and fails on `.eslintrc.cjs` projects.
 - Wire `"lint": "eslint ."` into `package.json` and CI yourself — nothing runs
-  it for you anymore.
+  it for you anymore; a pipeline that only runs `next build` reports green with
+  nothing linted.
 
 ```js
 // eslint.config.mjs
@@ -158,8 +166,10 @@ Verify: https://nextjs.org/docs/app/getting-started/server-and-client-components
   becomes a build error. Use `client-only` for `window`-touching modules.
   Installing the npm packages is optional (Next.js handles the imports
   internally) but do it if lint flags extraneous deps.
-- **Props across the boundary must be serializable.** No functions, class
-  instances, `Date`-typed surprises silently stringified — pass plain data.
+- **Props across the boundary must be serializable by React's RSC protocol**:
+  plain data plus `Date`, `Map`, `Set`, promises and Server Functions
+  (`'use server'`) are supported; ordinary functions and class instances are
+  not (verify: https://react.dev/reference/rsc/use-client#serializable-types-returned-by-server-components).
 - **No async client components** (`@next/next/no-async-client-component`
   catches this).
 

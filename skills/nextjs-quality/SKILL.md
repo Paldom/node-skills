@@ -1,6 +1,6 @@
 ---
 name: nextjs-quality
-description: Tunes Next.js App Router application quality - next.config hardening, eslint-config-next flat config, strict mode and typed routes, RSC and use-client boundary hygiene, bundle analysis, image and font optimization. Use when the user asks to production-harden a Next.js app, fix hydration or use-client errors, or shrink a Next bundle. Not for generic Node linting, unit test setup, or npm packaging.
+description: Tunes Next.js App Router quality - next.config hardening, eslint-config-next flat config, React Strict Mode, typed routes, RSC and use-client boundary hygiene, measured bundle work, image/font optimization. Use when the user asks to production-harden a Next.js app, fix hydration or use-client errors, or shrink the bundle. Not for generic Node linting, tsconfig strictness, unit tests, or deploys.
 license: MIT
 argument-hint: [harden|boundaries|bundle]
 ---

@@ -80,9 +80,12 @@ transitive deps (which Dependabot's cooldown does not — see caveats below).
   min-release-age-exclude[]=@yourorg/*
   ```
 
-- pnpm — `minimumReleaseAge` in **minutes** (added v10.16.0; docs list default
-  1440 = 1 day as of mid-2026, but set it explicitly — verify:
-  https://pnpm.io/settings):
+- pnpm — `minimumReleaseAge` in **minutes** (added v10.16.0; default 1440 =
+  1 day since pnpm 11.0, 2026-04-28 — set it explicitly anyway: the 11.0 blog
+  and the settings reference disagree on whether `minimumReleaseAgeStrict`
+  flips on when the value is explicit, and `minimumReleaseAgeIgnoreMissingTime`
+  defaults to true, so packages without registry timestamps bypass the gate —
+  verify: https://pnpm.io/settings/dependency-resolution):
 
   ```yaml
   # pnpm-workspace.yaml
@@ -93,11 +96,21 @@ transitive deps (which Dependabot's cooldown does not — see caveats below).
 
 - yarn (Berry) — `npmMinimalAgeGate` in `.yarnrc.yml`: minimum age, by npm
   registry publish date, a version must reach before yarn considers it for
-  installation; documented default `1w` (as of mid-2026; verify:
-  https://yarnpkg.com/configuration/yarnrc). Set it explicitly, e.g.
-  `npmMinimalAgeGate: "1w"`.
+  installation; the source defaults to `1d` for *new* projects only — the
+  upgrade migration writes the previous (no-gate) defaults into an existing
+  project's `.yarnrc.yml`, so bumping Yarn proves nothing. Check with
+  `yarn config get npmMinimalAgeGate` and set it explicitly, e.g.
+  `npmMinimalAgeGate: "1w"` (verify: https://yarnpkg.com/configuration/yarnrc).
 
 Pick 3–7 days for apps; exclude your own org scope so internal releases flow.
+CISA's April 2026 axios advisory prescribes exactly this pair — `min-release-age=7`
+plus `ignore-scripts=true` (https://www.cisa.gov/news-events/alerts/2026/04/20/supply-chain-compromise-impacts-axios-node-package-manager).
+The evidence is counterfactual but strong: axios's malicious version was live
+~3 hours and `keyv@6.0.0` was flagged within ~6 minutes, so any multi-day gate
+outlasts the exposure window. Name the ceiling too: install-script gating did
+nothing against AsyncAPI's *import-time* payload (2026-07), and egress
+allowlisting in CI (the keyv worm fetched the Bun runtime from GitHub during
+install) is the under-used control that blocks that class.
 
 ## Dependabot configuration
 
@@ -146,10 +159,14 @@ updates:
 
 Verified caveats — design these into your process:
 
+- Since 2026-07-14 github.com applies a **3-day default cooldown** to version
+  updates with no config at all (GHES depends on its version) — so `cooldown:`
+  in `dependabot.yml` is how you *lengthen* or scope the window, not how you get
+  one (verify: https://github.blog/changelog/2026-07-14-dependabot-version-updates-introduce-default-package-cooldown/).
 - Cooldown applies to **version updates only; security updates bypass it by
-  design**, so CVE fixes still land promptly. (Open bug reports exist about
-  security updates sometimes respecting cooldown — e.g.
-  dependabot-core#13979; verify current behavior at use time.)
+  design**, so CVE fixes still land promptly. (A past bug where security updates
+  honoured the cooldown — dependabot-core#13979 — was closed 2026-06-17; verify
+  current behavior at use time.)
 - Dependabot version updates for npm cover **direct (manifest) dependencies**;
   transitive, lockfile-only deps are not independently version-updated, so
   cooldown never gates them. That gap is exactly what
@@ -173,7 +190,7 @@ Lifecycle scripts (`preinstall`/`install`/`postinstall`) are the #1 execution
 vector for malicious packages. Behavior differs sharply per manager AND per
 major version — be precise:
 
-- **npm 11** (current stable line, as of mid-2026): dependency scripts **run
+- **npm 11** (still what many runner images and `nvm` installs carry): dependency scripts **run
   by default** (`ignore-scripts` defaults to `false`). Opt out in `.npmrc`:
 
   ```ini
@@ -182,21 +199,35 @@ major version — be precise:
 
   Caveat: this also skips *your own* `prepare`/`postinstall` and the pre/post
   hooks of `npm run` scripts — run needed builds explicitly.
-- **npm 12** (announced June 2026, estimated July 2026; not confirmed shipped
-  as of this writing — verify what you actually run:
-  https://github.blog/changelog/2026-06-09-upcoming-breaking-changes-for-npm-v12/):
+- **npm 12** (GA and tagged `latest` since 2026-07-08 — check `npm --version`;
+  https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/):
   flips the default — dependency install scripts (including implicit
   `node-gyp` builds) are **blocked unless explicitly allowed**. Also `--allow-git`
   and `--allow-remote` default to `none`, blocking git/tarball-URL deps.
-  Prepare on npm ≥ 11.16.0 (advisory warnings): `npm approve-scripts
-  --allow-scripts-pending` to list, then `npm approve-scripts` /
-  `npm deny-scripts`; commit the resulting allowlist in `package.json`.
+  Prepare on npm ≥ 11.16.0 (advisory warnings): `npm install-scripts ls`
+  (`npm approve-scripts --allow-scripts-pending` is the alias) to list, then
+  `npm install-scripts approve|deny|prune`; commit the resulting `allowScripts`
+  field in the **root** `package.json` (entries are version-pinned `pkg@1.2.3`
+  by default, so a compromised later release does not inherit approval).
+  Three inversions to encode: (a) `strict-allow-scripts` defaults to **false**,
+  so an unapproved script is *skipped with a warning and the install still
+  succeeds* — a green `npm ci` no longer proves a native build ran; set
+  `strict-allow-scripts=true` in CI (error `ESTRICTALLOWSCRIPTS`), not on dev
+  machines; (b) a legacy `ignore-scripts=true` in `.npmrc` **overrides**
+  `allowScripts` and silently voids every approval; (c) implicit `node-gyp
+  rebuild` is gated too, so `sharp`, `bcrypt`, `canvas` install cleanly and fail
+  at first use. No Node line bundles npm 12 yet (22.x ships 10.9.x, 24.x/26.x
+  ship 11.19.x; npm 12's own `engines` skip Node 25 entirely) — a repo opts in
+  with `npm install -g npm@12`, and until then npm 11 rules apply.
 - **pnpm ≥ 10**: dependency scripts **blocked by default**. pnpm 10 allowlist:
   `onlyBuiltDependencies` — in `pnpm-workspace.yaml` or `package.json#pnpm`
   (both locations count as policy). Removed in pnpm 11 in favor of
   `allowBuilds` (added v10.26.0), a map of package matchers to allow/deny;
   `strictDepBuilds` (added v10.3.0, default true) fails the install on
-  unreviewed build scripts (as of mid-2026; verify: https://pnpm.io/settings):
+  unreviewed build scripts. pnpm 12 (2026-08-26, Rust rewrite) hard-fails on
+  unknown `pnpm-workspace.yaml` keys (`ERR_PNPM_UNRECOGNIZED_WORKSPACE_SETTINGS`),
+  so a leftover `onlyBuiltDependencies` breaks the install instead of being
+  ignored — migrate the key first (verify: https://pnpm.io/settings/build):
 
   ```yaml
   # pnpm-workspace.yaml (pnpm ≥ 10.26)
@@ -272,6 +303,11 @@ https://github.blog/changelog/2025-12-09-npm-classic-tokens-revoked-session-base
   Setting up the publish workflow itself → `node-release` skill.
 - Read-only needs (private registry installs in CI): granular token, read
   scope, narrowest package/org scope, shortest expiry, one token per pipeline.
+- **Bypass-2FA granular tokens** lost package-management capabilities on
+  2026-07-31 and are scheduled to lose direct publish (~Jan 2027) — plan the move
+  to trusted publishing or staged publishing now. Staged publishing adds no new
+  permission tier: any maintainer with publish access can approve a staged
+  upload, including one a compromised maintainer staged.
 
 ## GitHub Actions hygiene
 
@@ -323,7 +359,11 @@ window `T1..T2`:
      https://pnpm.io/settings)
    - yarn `package.json`: `"resolutions": { "P": "<known-good>" }`
    Reinstall, confirm the lockfile shows only the pinned version, commit.
-4. **Rotate credentials** reachable from any machine/CI job that ran the
+4. **Remove persistence, then rotate credentials.** The 2026-08 keyv/cacheable
+   worm planted `.vscode/tasks.json` and `.claude/settings.json` hooks in the
+   host repo and installs a watcher that fires when the stolen token starts
+   returning HTTP 4xx — so scan for planted IDE/agent hook files and git hooks
+   first, then rotate everything reachable from any machine/CI job that ran the
    compromised code during the window: npm tokens, GitHub tokens/SSH keys,
    cloud creds, `.env` secrets, browser-stored sessions if a dev box ran it.
    Assume exfiltration; rotation is cheap.

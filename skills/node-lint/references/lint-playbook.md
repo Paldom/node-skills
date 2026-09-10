@@ -40,14 +40,21 @@ Decision shortcuts:
 
 Version-gated claims — re-verify at use time via the linked primary docs.
 
-- **ESLint v10** (Feb 2026) removed the eslintrc system entirely: `.eslintrc.*` and
+- **ESLint v10** (Feb 2026; v9 reached EOL on 2026-08-06, so v10 is the only supported
+  line) removed the eslintrc system entirely: `.eslintrc.*` and
   `.eslintignore` are ignored, `ESLINT_USE_FLAT_CONFIG` is gone, and flat
   `eslint.config.js` is the only format. Config lookup now starts from each linted
   file's directory, not the cwd. Requires Node.js ^20.19.0 || ^22.13.0 || >=24.
   ESLint v9.x EOL is 2026-08-06.
   (verify: https://eslint.org/docs/latest/use/migrate-to-10.0.0)
 - **typescript-eslint v8.x** supports ESLint ^8.57.0 || ^9.0.0 || ^10.0.0; typed linting
-  uses `projectService: true`.
+  uses `projectService: true`. It declares `typescript >=4.8.4 <6.1.0` — **no
+  TypeScript 7 support** (forcing it crashes typescript-estree with `Cannot read
+  properties of undefined (reading 'Cjs')`; the tracking issue was closed
+  not-planned). On TS 7 the choices are: pin the lint-time TypeScript to 6.x via the
+  `@typescript/typescript6` alias, switch type-aware linting to Oxlint + tsgolint
+  (stable since 2026-07-22, needs TS 7), or accept Biome's partial type-awareness.
+  ESLint 9 → 10 migration: `npx codemod @eslint/v9-to-v10`.
   (verify: https://typescript-eslint.io/users/dependency-versions/)
 - **Prettier 3.9.x** is current.
   (verify: https://github.com/prettier/prettier/releases)
@@ -58,10 +65,11 @@ Version-gated claims — re-verify at use time via the linked primary docs.
   which trigger whole-project scanning (slower, still no tsc). Monorepo-nested
   `biome.json`, GritQL plugins, bulk suppressions.
   (verify: https://biomejs.dev/linter/domains/ and https://biomejs.dev/blog/)
-- **Oxlint** ships 835+ built-in rules (ESLint core, typescript, react, jest, vitest,
-  import, unicorn, jsx-a11y ports). JS-plugin support (ESLint v9+ plugin API compat)
-  reached **alpha** in March 2026. Type-aware mode exists via `oxlint-tsgolint`
-  (typescript-go based) behind `--type-aware`; still maturing.
+- **Oxlint** (1.8x) ships 865+ built-in rules (ESLint core, typescript, react, jest,
+  vitest, import, unicorn, jsx-a11y ports). JS-plugin support (ESLint v9+ plugin API
+  compat) reached **alpha** in March 2026. Type-aware mode via `--type-aware` +
+  `oxlint-tsgolint` requires TypeScript 7.0+; rule coverage is close to complete
+  but not total (as of 2026-09).
   (verify: https://oxc.rs/docs/guide/usage/linter and
   https://oxc.rs/docs/guide/usage/linter/js-plugins)
 
@@ -73,7 +81,7 @@ rely on defaults, which shift between minors.
 ```jsonc
 // biome.json — match $schema to the installed version
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
     "includes": ["**", "!**/dist/**", "!**/coverage/**", "!**/node_modules/**"]

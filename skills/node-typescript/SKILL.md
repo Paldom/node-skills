@@ -56,8 +56,11 @@ applicable.
   constrains CJS-emit default exports — enable it *with* the codemod pass.
 - `isolatedDeclarations` demands explicit return types on exported API — great
   for libraries, noisy for apps; don't cargo-cult it into app configs.
-- The Go-based compiler (tsgo/TS 7) is coming but changes no recommendation
-  here: standard explicit tsconfigs stay compatible. No timeline promises.
+- TypeScript 7 (the native compiler, GA July 2026) is what `typescript@latest`
+  installs; explicit tsconfigs stay compatible, but 6.0's deprecations
+  (`baseUrl`, `target: es5`, `moduleResolution: classic`) are hard errors on 7 —
+  the playbook lists them and the `@typescript/typescript6` fallback for
+  API-dependent tooling.
 - Version-gate: re-verify default/flag behavior against the official TSConfig
   reference when the TS major changes.
 

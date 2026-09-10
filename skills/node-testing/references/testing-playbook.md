@@ -20,7 +20,7 @@ the `node-ci` skill; this file only defines the commands CI should run).
 
 Pick one runner per package. Do not mix runners in a single package.
 
-| Criterion | Vitest 4 (current major as of mid-2026, verify: https://vitest.dev/blog/vitest-4) | `node:test` (built-in) |
+| Criterion | Vitest 5 (current major since 2026-09-03; many repos still on 4.x — verify: https://vitest.dev/blog/vitest-5) | `node:test` (built-in) |
 |---|---|---|
 | Dependencies added | vitest + plugins | Zero — ships with Node |
 | TypeScript | Any TS, transformed by Vite/esbuild | Erasable syntax only via type stripping — stable since Node v24.12.0 (verify: https://nodejs.org/api/typescript.html). No `enum`, no namespaces with runtime code, no legacy decorators emit |
@@ -90,9 +90,18 @@ Prefer `globals: false` in libraries: explicit imports keep files portable and m
 the ESLint/TS story trivial. Turn `globals: true` on only when a dependency (e.g.
 some testing-library cleanup integrations) requires it.
 
+**Vitest 5 migration notes** (as of 2026-09; verify:
+https://vitest.dev/guide/migration/): requires Node >= 22.12 and Vite >= 6.4;
+`clearMocks` now defaults to `true`; `vi.mock`/`vi.hoisted` inside a function,
+block or `describe`/`test` callback throws (it only warned before); async
+assertions (`resolves`, `rejects`, `toMatchFileSnapshot`) fail the test when not
+awaited; `test.sequential` is removed (use `concurrent: false`); browser
+locators match text exactly by default; artifacts consolidate under `.vitest/`.
+Keep 4.x blocks for repos not yet upgraded — the config shapes below are the same.
+
 ## Vitest config — React app (jsdom vs browser mode)
 
-Two options, both stable as of Vitest 4:
+Two options, both stable as of Vitest 4 and 5:
 
 - **jsdom environment** — fast, runs in Node, no browser processes. But it is a
   simulation: no real layout (`getBoundingClientRect` returns zeros), no real
@@ -128,7 +137,7 @@ export default defineConfig({
 })
 ```
 
-Browser-mode variant of the `test` block (Vitest 4 shape — provider is a package,
+Browser-mode variant of the `test` block (Vitest 4/5 shape — provider is a package,
 context imports come from `vitest/browser`):
 
 ```ts
@@ -150,8 +159,11 @@ Do not keep both jsdom and browser mode for the same tests; pick per test projec
 Use the `v8` provider. AST-based remapping of v8 coverage (`ast-v8-to-istanbul`)
 produces Istanbul-accurate reports at v8 speed. It shipped opt-in in Vitest 3.2.0
 as `coverage.experimentalAstAwareRemapping`; Vitest 4.0 removed that option and made
-AST remapping the default and only remapping method (as of mid-2026; verify:
-https://vitest.dev/guide/coverage and https://vitest.dev/guide/migration.html).
+AST remapping the default and only remapping method. Vitest 5 keeps the `v8`
+provider; its Istanbul reporting stack moved to the maintained `@vitest/istanbuljs`
+fork, and `coverage.thresholds.perFile` now applies per glob pattern rather than to
+every threshold set (as of 2026-09; verify: https://vitest.dev/guide/coverage and
+https://vitest.dev/guide/migration/).
 
 Thresholds must **fail the run**, not just print a report. Vitest exits non-zero
 with `Coverage for lines (X%) does not meet global threshold (Y%)` when unmet

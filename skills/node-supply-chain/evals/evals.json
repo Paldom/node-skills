@@ -22,7 +22,7 @@
       "type": "quality",
       "prompt": "harden this repo's supply chain",
       "expected_behavior": [
-        "layers the real controls: committed lockfile + npm ci, Dependabot weekly grouped updates with cooldown (security updates bypass it by design; transitive npm deps not covered), install-script policy (npm v12 blocks lifecycle scripts by default / --ignore-scripts), SHA-pinned third-party actions",
+        "layers the real controls: committed lockfile + npm ci, Dependabot weekly grouped updates with cooldown (security updates bypass it by design; transitive npm deps not covered), install-script policy for the repo's actual package manager (npm >= 12 allowScripts allowlist, npm 11 ignore-scripts, pnpm allowBuilds, yarn enableScripts), SHA-pinned third-party actions",
         "explicitly warns against blanket auto-merge of bot PRs (bot-opened PRs have delivered malware on green CI)",
         "distinguishes what this skill owns (npm/dependency hygiene) from repo settings like rulesets/secret scanning and routes those elsewhere",
         "verifies with the skill's audit script or npm audit signatures"

@@ -19,7 +19,8 @@ import sys
 from pathlib import Path
 
 # Verify against https://nodejs.org/en/about/previous-releases when editing.
-EOL_NODE = {"14", "16", "18", "20"}
+# Odd majors are never LTS: each is EOL eight months after release (25 → 2026-06-01).
+EOL_NODE = {"14", "15", "16", "17", "18", "19", "20", "21", "23", "25"}
 OFFICIAL_PREFIXES = ("actions/", "github/")
 USES_RE = re.compile(r"^\s*-?\s*uses:\s*([^\s#]+)(\s*#.*)?$")
 SHA_RE = re.compile(r"@[0-9a-f]{40}$")
@@ -91,7 +92,10 @@ def main() -> int:
             for v in re.findall(r"\d{2}", m.group(1)):
                 if v in EOL_NODE:
                     report("ERROR", f"{rel}: Node {v} in matrix list - EOL line")
-        has_pr = re.search(r"^\s*pull_request:", text, re.M)
+        # `pull_request:` mapping form, `- pull_request` list item, or `on: [pull_request]`
+        has_pr = re.search(
+            r"(^\s*-?\s*pull_request\s*:?\s*(#.*)?$)|(^on:\s*\[[^\]]*\bpull_request\b)", text, re.M
+        )
         if has_pr and "merge_group" not in text:
             report(
                 "ERROR" if args.require_merge_group else "WARN",
@@ -109,21 +113,33 @@ def main() -> int:
             "matrix jobs found but no always()-guarded aggregator job - "
             "required checks on individual legs are brittle",
         )
-    # Aggregator must fail closed: a result test that names only 'failure' passes
-    # on cancelled/skipped legs. Accept the != 'success' pattern (covers all) or
-    # explicit coverage of cancelled+skipped.
-    if "if: always()" in all_text:
-        checks = re.findall(r"needs[^\n]*result[^\n]*", all_text)
+    # Aggregator must fail closed, judged per file (a result test in another
+    # workflow proves nothing about this one). `if: always()` with no
+    # needs.*.result test at all is the worst case: it is green whatever failed.
+    # A test that names only 'failure' passes on cancelled/skipped legs. Accept
+    # the != 'success' pattern (covers all) or explicit cancelled+skipped.
+    for f in files:
+        text = f.read_text(encoding="utf-8", errors="replace")
+        if "if: always()" not in text:
+            continue
+        rel = f.relative_to(root)
+        checks = re.findall(r"needs[^\n]*result[^\n]*", text)
         joined = " ".join(checks)
         fail_closed = (
             "!= 'success'" in joined
             or '!= "success"' in joined
             or ("cancelled" in joined and "skipped" in joined)
         )
-        if checks and not fail_closed:
+        if not checks:
             report(
                 "ERROR",
-                "aggregator result-check does not fail closed - test "
+                f"{rel}: a job runs with if: always() but nothing tests needs.*.result - "
+                "the aggregator is green even when every dependency failed",
+            )
+        elif not fail_closed:
+            report(
+                "ERROR",
+                f"{rel}: aggregator result-check does not fail closed - test "
                 "result != 'success' (covers failure, cancelled, and skipped)",
             )
 

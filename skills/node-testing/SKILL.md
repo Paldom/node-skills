@@ -1,6 +1,6 @@
 ---
 name: node-testing
-description: Builds unit and integration test infrastructure for Node/TS/React - Vitest or node:test selection with explicit config, v8 coverage gates that fail CI, React Testing Library, mocking discipline, flaky-test triage. Use when the user asks to set up tests, add coverage thresholds, pick a test runner, or fix a flaky test setup. Not for E2E browser suites, lint rules, or CI workflow authoring.
+description: Builds unit and integration test infrastructure for Node/TS/React - Vitest or node:test with explicit config, Jest-to-Vitest migration, v8 coverage gates that fail CI, React Testing Library, mocking discipline, flaky-test triage. Use when the user asks to set up tests, add coverage thresholds, pick a test runner, or fix a flaky setup. Not for E2E browser suites, lint rules, or CI workflows.
 license: MIT
 argument-hint: [library|react-app|coverage|flaky]
 ---

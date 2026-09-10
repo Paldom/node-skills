@@ -23,7 +23,7 @@
       "prompt": "add CI for this typescript package",
       "expected_behavior": [
         "matrix on maintained LTS lines (22 + 24, optionally 26 as experimental/allowed-failure; Node 20 is EOL)",
-        "setup-node@v6 with the built-in cache keyed to the lockfile; pnpm via pnpm/action-setup (corepack is gone from Node >= 25/26)",
+        "setup-node@v7 with the built-in cache keyed to the lockfile; pnpm via pnpm/action-setup (corepack is gone from Node >= 25/26)",
         "wires lint + type-check + test as jobs feeding a single all-checks-passed aggregator (if always() + result check) as the only required check",
         "adds concurrency cancel-in-progress and timeout-minutes"
       ]

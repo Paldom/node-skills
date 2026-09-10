@@ -52,9 +52,13 @@ grep your dist output and re-exported deps for top-level `await`; debug with
 2. If `engines` guarantees `>=20.19` (practically: `>=22.12` now that 20 is EOL)
    AND your module graph has no top-level await -> **ship ESM-only**. CJS
    consumers `require()` it directly.
-3. If you must support older Node lines, Electron/bundler matrices you cannot
-   verify, or your graph has top-level await -> **ship dual ESM+CJS** and manage
-   the dual-package hazard (section 3).
+3. If you must support older Node lines or Electron/bundler matrices you cannot
+   verify -> **ship dual ESM+CJS** and manage the dual-package hazard (section 3).
+   Top-level `await` is **not** solved by a format choice: CommonJS cannot express
+   it, so a CJS build of a graph with TLA fails or deadlocks. Either remove the
+   TLA (lazy/async init behind a function) so `require(esm)` works, or stay
+   ESM-only and document that CJS consumers must `import()` — test the
+   transitive graph, TLA in a dependency counts too.
 4. Never ship CJS-only for new packages.
 
 **CJS interop polish (ESM-only packages):** when `require()` loads your ESM, CJS
@@ -174,6 +178,13 @@ Mitigate, in order of preference:
 As of mid-2026, tsup's own README says it "is not actively maintained anymore"
 and recommends **tsdown** (Rolldown-based, an official Rolldown project) as the
 replacement (verify: https://github.com/egoist/tsup and https://tsdown.dev).
+tsdown 0.23 (2026-09-03) bundles an attw "profile" check; its release notes say the
+default profile is now `esm-only` (ignores CJS resolution failures) while the docs
+still say `strict` — set `attw: { profile: "strict", level: "error" }` yourself if
+CommonJS consumers matter, and keep running `arethetypeswrong` on the packed
+tarball (the bundled gate does). tsup 8.5.1 is actively broken for TS 6/7
+declaration builds (it injects `baseUrl: "."` during DTS generation → `TS5101`,
+and `ignoreDeprecations` no longer exists on 7) — a hard reason to migrate.
 Use tsdown for new packages; migrate existing tsup configs via its
 "Migrate from tsup" guide (https://tsdown.dev/guide/migrate-from-tsup).
 
@@ -227,7 +238,7 @@ Bundling policy for libraries:
   // is bundled with Node <= 24 but removed from Node 25+ distributions —
   // install it separately or rely on your PM's own check.
   // As of mid-2026 (verify: https://github.com/nodejs/corepack).
-  "packageManager": "pnpm@10.12.1",
+  "packageManager": "pnpm@12.3.4",
 
   // Bundler tree-shaking hint (webpack et al.). `false` = safe to drop unused
   // modules. List exceptions explicitly if any module has import side effects

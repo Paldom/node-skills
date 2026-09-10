@@ -5,7 +5,7 @@ Usage: audit_supply_chain.py [--root DIR]
 ERROR (exit 1): no lockfile, bare `npm install`/`pnpm install` (non-frozen) in
 CI, blanket auto-merge of bot PRs detected in workflows. WARN: Dependabot
 missing/without cooldown or groups, no install-script policy for the repo's
-package manager, unpinned third-party actions (detail via node-ci's checker).
+package manager (pnpm >= 10 and npm >= 12 block dependency scripts by default), unpinned third-party actions (detail via node-ci's checker).
 Stdlib only; line-based heuristics - it flags, humans/agents disposition.
 """
 
@@ -67,15 +67,17 @@ def main() -> int:
         text = f.read_text(encoding="utf-8", errors="replace")
         rel = f.relative_to(root)
         for i, ln in enumerate(text.splitlines(), 1):
-            if "npm ci" in ln:
-                continue
-            if BARE_INSTALL_RE.search(ln) or FROZEN_DISABLED_RE.search(ln):
+            # judge each command in the line, not the line: `npm ci && npm install x` is still a bare install
+            segs = [s for s in re.split(r"&&|\|\||;", ln) if "npm ci" not in s]
+            if any(BARE_INSTALL_RE.search(s) or FROZEN_DISABLED_RE.search(s) for s in segs):
                 report(
                     "ERROR",
                     f"{rel}:{i}: non-frozen install in CI ({ln.strip()[:80]}) - "
                     "use npm ci / pnpm install --frozen-lockfile / yarn --immutable",
                 )
-        if AUTOMERGE_RE.search(text) and DEPENDABOT_ACTOR_RE.search(text):
+        # Comments are not policy: "# never auto-merge bot PRs" must not trip this.
+        code = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+        if AUTOMERGE_RE.search(code) and DEPENDABOT_ACTOR_RE.search(code):
             report(
                 "ERROR",
                 f"{rel}: bot-PR auto-merge detected - bot PRs need the same CI+review gate as humans",
@@ -90,7 +92,8 @@ def main() -> int:
         if "cooldown" not in text:
             report(
                 "WARN",
-                "dependabot.yml has no cooldown - fresh releases install immediately "
+                "dependabot.yml sets no cooldown - github.com applies a 3-day default to version "
+                "updates (since 2026-07-14; GHES depends on version) - write the window you mean "
                 "(note: cooldown never covers transitive npm deps; security PRs bypass it)",
             )
         if "groups" not in text:
@@ -107,22 +110,55 @@ def main() -> int:
         except json.JSONDecodeError:
             report("ERROR", "package.json is not valid JSON")
     if pm == "pnpm":
+        # pnpm >= 10 blocks dependency build scripts by default (strictDepBuilds fails
+        # the install on unreviewed ones). The allowlist is `allowBuilds` (pnpm >= 10.26;
+        # the only form on pnpm 11+) or the older `onlyBuiltDependencies` (pnpm 10).
         pnpm_cfg = pkg.get("pnpm") or {}
         ws = root / "pnpm-workspace.yaml"
         ws_text = ws.read_text(encoding="utf-8", errors="replace") if ws.is_file() else ""
-        if "onlyBuiltDependencies" not in pnpm_cfg and "onlyBuiltDependencies" not in ws_text:
+        joined_cfg = json.dumps(pnpm_cfg) + ws_text
+        if "dangerouslyAllowAllBuilds" in joined_cfg:
+            report(
+                "ERROR",
+                "pnpm dangerouslyAllowAllBuilds is set - every dependency build script runs "
+                "unreviewed; replace it with an explicit allowBuilds list",
+            )
+        elif re.search(r"strictDepBuilds\W+false", joined_cfg):
             report(
                 "WARN",
-                "pnpm without an onlyBuiltDependencies allowlist (package.json#pnpm or "
-                "pnpm-workspace.yaml) - install scripts run unconstrained",
+                "pnpm strictDepBuilds: false - unreviewed build scripts only warn instead of "
+                "failing the install; keep the default (true)",
+            )
+        elif "allowBuilds" not in joined_cfg and "onlyBuiltDependencies" not in joined_cfg:
+            print(
+                "INFO: pnpm with no build allowlist - pnpm >= 10 blocks dependency scripts by "
+                "default, so nothing runs; if a dependency genuinely needs its build script, add "
+                "it to allowBuilds (pnpm-workspace.yaml or package.json#pnpm)"
             )
     elif pm == "npm":
+        # npm >= 12 (GA 2026-07-08) blocks dependency scripts unless listed in
+        # package.json#allowScripts (written by `npm approve-scripts`); npm 11 runs them
+        # unless .npmrc sets ignore-scripts=true.
         npmrc = (
             (root / ".npmrc").read_text(encoding="utf-8", errors="replace")
             if (root / ".npmrc").is_file()
             else ""
         )
-        if re.search(r"^\s*ignore-scripts\s*=\s*false", npmrc, re.M):
+        if "allowScripts" in pkg:
+            print("INFO: npm allowScripts allowlist present (npm >= 12 policy)")
+            if re.search(r"^\s*ignore-scripts\s*=\s*true", npmrc, re.M):
+                report(
+                    "WARN",
+                    ".npmrc ignore-scripts=true overrides package.json#allowScripts - every "
+                    "approval is silently voided; drop the legacy line on npm >= 12",
+                )
+            if "strict-allow-scripts" not in npmrc:
+                print(
+                    "INFO: strict-allow-scripts is off (npm default) - unapproved install scripts "
+                    "are skipped with a warning and `npm ci` still succeeds; set "
+                    "strict-allow-scripts=true in CI's .npmrc to fail instead"
+                )
+        elif re.search(r"^\s*ignore-scripts\s*=\s*false", npmrc, re.M):
             report(
                 "WARN",
                 ".npmrc explicitly sets ignore-scripts=false - lifecycle scripts run; "
@@ -131,8 +167,9 @@ def main() -> int:
         elif "ignore-scripts" not in npmrc:
             report(
                 "WARN",
-                "npm without ignore-scripts policy in .npmrc - verify your npm major's default "
-                "lifecycle-script behavior against npm docs and set policy explicitly",
+                "npm without an install-script policy: on npm >= 12 run `npm approve-scripts` "
+                "and commit package.json#allowScripts; on npm 11 set ignore-scripts=true in "
+                ".npmrc (or upgrade)",
             )
     elif pm == "yarn":
         yarnrc = (

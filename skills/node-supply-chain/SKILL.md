@@ -34,12 +34,15 @@ script policies to pnpm/yarn repos where they do nothing.
    `npm ci` / `pnpm install --frozen-lockfile` / yarn immutable — never bare
    install.
 3. **Dependabot** (`.github/dependabot.yml`): npm + github-actions ecosystems,
-   weekly, grouped, cooldown — with its three real limits stated every time:
+   weekly, grouped, an explicit cooldown (github.com defaults to 3 days since
+   2026-07-14; write the window you mean) — with its three real limits stated
+   every time:
    security PRs bypass cooldown by design, transitive npm deps aren't covered,
    SHA-pinned actions don't alert. **Never blanket auto-merge bot PRs** — bot
    authorship has delivered malware on green CI; same review gate as humans.
-4. **Install-script policy per package manager** (playbook table — npm's
-   current-major behavior, pnpm `onlyBuiltDependencies`, yarn `enableScripts`):
+4. **Install-script policy per package manager** (playbook table — npm >= 12
+   `allowScripts` allowlist vs npm 11 `ignore-scripts`, pnpm `allowBuilds`, yarn
+   `enableScripts`):
    apply the mechanism the repo's PM actually honors; allowlist the few packages
    that genuinely need build scripts.
 5. **Provenance verification** (`npm audit signatures` — command version-gated

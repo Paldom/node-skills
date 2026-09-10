@@ -32,8 +32,19 @@ Apply all unconditionally. Never rely on implicit defaults — write the config 
   Raise per-job only when a job provably needs more.
 
 - **Action pinning** (supply-chain default; policy details live in node-supply-chain):
-  - Official `actions/*` actions: pin by major tag (`actions/checkout@v6`,
-    `actions/setup-node@v6`) and let Dependabot bump them.
+  - Official `actions/*` actions: pin by major tag (`actions/checkout@v7`,
+    `actions/setup-node@v7`) and let Dependabot bump them. Note checkout v7
+    refuses to check out fork PRs under `pull_request_target`/`workflow_run`
+    (pwn-request hardening, 2026-06-18; opt-out is the greppable
+    `allow-unsafe-pr-checkout`) — a workflow that relied on that is a
+    trust-boundary bug, not a checkout regression. The guard was backported to
+    6.1.0/5.1.0/4.4.0/3.7.0/2.8.0 on 2026-07-20, so floating major tags absorbed a
+    breaking change automatically while SHA pins had to be bumped by hand — the
+    cost of immutability, and the reason Dependabot must cover `github-actions`.
+    Out of scope for the guard, and where the 2026 attacks went: `issue_comment`
+    triggers running unrestricted commands in OIDC-enabled jobs
+    (GHSA-9pvf-vcx3-x239), `run:` blocks fetching with `git`/`gh`, and
+    `repository:` pointed at an unrelated repo.
   - Everything else (e.g. `pnpm/action-setup`): pin to the **full 40-char commit SHA**
     with a trailing version comment for reviewers. GitHub documents full-SHA pinning
     as the only immutable way to consume an action — as of mid-2026
@@ -49,9 +60,11 @@ Apply all unconditionally. Never rely on implicit defaults — write the config 
     identifier") and raises update PRs (verify:
     https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/about-dependabot-version-updates).
     Dependabot **alerts**, however, are never created for SHA-pinned actions — only
-    for semver-referenced ones (same secure-use page above). GitHub's docs do not
-    state that the trailing version comment is kept up to date — treat the comment as
-    reviewer documentation and verify at use time.
+    for semver-referenced ones (same secure-use page above). Dependabot also updates
+    the trailing `# vX.Y.Z` comment when it sits on the same line as the `uses:`
+    (verify: https://docs.github.com/en/code-security/reference/supply-chain-security/supported-ecosystems-and-repositories)
+    — keep the comment on that line (it must end the line) so it stays true; a
+    comment that is already wrong is *not* corrected (dependabot-core#7912).
   - Ensure a `github-actions` ecosystem entry exists in `.github/dependabot.yml`
     (config details live in node-supply-chain; verify:
     https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/keeping-your-actions-up-to-date-with-dependabot).
@@ -132,12 +145,12 @@ script behavior at use time.
 For single-version jobs (lint, typecheck), do not hardcode either — use
 `node-version-file: package.json`. setup-node reads, in order, `volta.node`,
 `devEngines.runtime` (name `node`), then `engines.node`, and resolves semver ranges —
-as of setup-node v6, mid-2026
+as of setup-node v7, September 2026
 (verify: https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md).
 
 ## setup-node and caching, per package manager
 
-Current major is **`actions/setup-node@v6`** as of mid-2026
+Current major is **`actions/setup-node@v7`** (v7.0.0, July 2026)
 (verify: https://github.com/actions/setup-node). v5 introduced automatic caching when
 `packageManager` is set; v6 restricted auto-caching to npm only. **Do not rely on
 either behavior** — always set `cache:` and `cache-dependency-path:` explicitly, keyed
@@ -171,10 +184,10 @@ because setup-node invokes `pnpm store path` during cache setup.
 
 ```yaml
 steps:
-  - uses: actions/checkout@v6
+  - uses: actions/checkout@v7
   - uses: pnpm/action-setup@<full-40-char-sha> # vX.Y.Z  (resolve SHA at emit time)
     # no `version:` input — pnpm version comes from package.json "packageManager"
-  - uses: actions/setup-node@v6
+  - uses: actions/setup-node@v7
     with:
       node-version-file: package.json
       cache: pnpm
@@ -218,8 +231,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: package.json   # engines.node, not a hardcoded number
           cache: npm
@@ -231,8 +244,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: package.json
           cache: npm
@@ -249,8 +262,8 @@ jobs:
         # Derived 2026-07 from engines.node ∩ non-EOL lines — see matrix section.
         node: ['22', '24', '26']
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm

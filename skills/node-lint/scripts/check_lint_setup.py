@@ -48,6 +48,41 @@ PRETTIER = (
 )
 
 
+def strip_jsonc(text: str) -> str:
+    """Drop // and /* */ comments and trailing commas, but never inside strings.
+
+    A regex that deletes `//...` corrupts every `"$schema": "https://..."` line;
+    this walks the text once and tracks whether it is inside a JSON string.
+    """
+    out: list[str] = []
+    i, n, in_str = 0, len(text), False
+    while i < n:
+        ch = text[i]
+        if in_str:
+            out.append(ch)
+            if ch == "\\" and i + 1 < n:
+                out.append(text[i + 1])
+                i += 1
+            elif ch == '"':
+                in_str = False
+        elif ch == '"':
+            in_str = True
+            out.append(ch)
+        elif text.startswith("//", i):
+            i = text.find("\n", i)
+            if i < 0:
+                break
+            continue
+        elif text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            i = n if end < 0 else end + 2
+            continue
+        else:
+            out.append(ch)
+        i += 1
+    return re.sub(r",\s*([}\]])", r"\1", "".join(out))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--root", type=Path, default=Path("."))
@@ -96,11 +131,8 @@ def main() -> int:
     biome_formats = False
     if biome:
         raw = (root / biome[0]).read_text(encoding="utf-8", errors="replace")
-        # biome.jsonc allows comments/trailing commas - strip before parsing.
-        stripped = re.sub(r"//[^\n]*|/\*.*?\*/", "", raw, flags=re.S)
-        stripped = re.sub(r",\s*([}\]])", r"\1", stripped)
         try:
-            conf = json.loads(stripped)
+            conf = json.loads(strip_jsonc(raw))
             biome_formats = (conf.get("formatter") or {}).get("enabled", True)
         except (json.JSONDecodeError, OSError):
             # Fail closed: if we cannot parse it, assume the formatter is on.

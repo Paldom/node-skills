@@ -35,12 +35,14 @@ context on *why* omission is unsafe, not facts your config should lean on:
 - `tsc --init` output was overhauled (slimmed and made more prescriptive) in
   5.9. Treat generated files as a starting sketch, not a contract (verify:
   https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-9.html).
-- TypeScript 6.0 also retires legacy options (as of mid-2026; verify: the 6.0
-  release notes above): `moduleResolution: "node10"`, `target: "es5"`, and
-  `baseUrl` are deprecated; `module: "amd"/"umd"/"system"`,
-  `moduleResolution: "classic"`, and `outFile` are removed; `esModuleInterop`
-  and `allowSyntheticDefaultImports` can no longer be disabled. Do not put
-  deprecated options in new configs.
+- TypeScript 6.0 also retires legacy options (verify: the 6.0 release notes
+  above): `moduleResolution: "node10"`, `target: "es5"`, `baseUrl`,
+  `module: "amd"/"umd"/"system"`, `moduleResolution: "classic"`, and disabling
+  `esModuleInterop` / `allowSyntheticDefaultImports` are **deprecated** — they
+  still work on 6.x with `"ignoreDeprecations": "6.0"`; only `outFile` is
+  removed outright in 6.0. TypeScript 7.0 turns those deprecations into hard
+  errors (see the status section below). Do not put deprecated options in new
+  configs.
 
 Rules that follow from this:
 
@@ -65,7 +67,7 @@ Node (not pre-bundled by the consumer's bundler).
     "module": "nodenext",
     "moduleResolution": "nodenext",   // implied by module=nodenext; state it anyway
     "verbatimModuleSyntax": true,
-    "esModuleInterop": true,          // always-on in 6.0; keep explicit
+    "esModuleInterop": true,          // disabling is deprecated in 6.0, an error in 7.0; keep explicit
     "isolatedModules": true,
 
     // Language level — pin per your minimum supported Node; do NOT float with
@@ -134,7 +136,11 @@ Why these flags:
 ## Config B — bundled application
 
 Use this when a bundler (esbuild, Vite, tsup, webpack, etc.) produces the
-runtime output and `tsc` exists only as the type-check gate.
+runtime output and `tsc` exists only as the type-check gate. The block below is
+the Node-side shape; a browser/React app additionally needs `"lib": ["es2023",
+"dom", "dom.iterable"]`, `"jsx": "react-jsx"`, and the framework's client types
+(e.g. `"types": ["vite/client"]`) — keep whatever the framework scaffold
+generated for those and only tighten the strictness flags.
 
 ```jsonc
 // tsconfig.json — bundled app: tsc type-checks, the bundler emits
@@ -208,8 +214,8 @@ and test, so failures are attributable:
 typecheck:
   runs-on: ubuntu-latest
   steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
+    - uses: actions/checkout@v7
+    - uses: actions/setup-node@v7
       with: { node-version: 22, cache: npm }
     - run: npm ci
     - run: npx tsc -p tsconfig.json --noEmit
@@ -265,20 +271,29 @@ Mechanics:
 
 ```bash
 #!/usr/bin/env bash
-# scripts/type-ratchet.sh — no-new-errors gate
-set -euo pipefail
+# scripts/type-ratchet.sh — no-new-errors gate (count is a proxy; see note below)
+set -uo pipefail
 baseline=$(cat .tsc-error-baseline)          # committed integer
-count=$(npx tsc -p tsconfig.strict.json --noEmit --pretty false 2>&1 \
-        | grep -cE ': error TS[0-9]+' || true)
+out=$(npx tsc -p tsconfig.strict.json --noEmit --pretty false 2>&1); status=$?
+count=$(printf '%s\n' "$out" | grep -cE 'error TS[0-9]+' || true)
+# tsc exits 0 only when clean; a non-zero exit with zero diagnostics means tsc
+# itself failed (missing inputs, bad config, not installed) — never count that as 0.
+if [ "$status" -ne 0 ] && [ "$count" -eq 0 ]; then
+  printf '%s\n' "$out"; echo "tsc did not run to completion — not a green ratchet."; exit 1
+fi
 echo "strict-candidate errors: $count (baseline $baseline)"
 if [ "$count" -gt "$baseline" ]; then
-  echo "New type errors introduced under the ratchet config. Fix or annotate."
-  exit 1
+  echo "New type errors introduced under the ratchet config. Fix or annotate."; exit 1
 fi
 if [ "$count" -lt "$baseline" ]; then
-  echo "$count" > .tsc-error-baseline        # commit the improvement
+  echo "Baseline can drop to $count — update .tsc-error-baseline in this PR."; exit 1
 fi
 ```
+
+A count can hide one fixed error traded for one new one; when that matters,
+diff the normalized diagnostics (`file:TScode`) against a committed list
+instead. The baseline is updated by a human in the PR that earns it, never by
+CI writing to the tree.
 
 - When suppressing a pre-existing error to unblock a file, use
   `// @ts-expect-error TODO(strict): <reason>` — never `@ts-ignore` — so
@@ -309,18 +324,33 @@ reference; route there.
 
 ## tsgo / TypeScript 7 status
 
-As of mid-2026: TypeScript 6.0 (March 2026) is intended to be the last release
-built on the JavaScript codebase; TypeScript 7.0 — the native Go port — reached
-Release Candidate on 2026-06-18, installed as the regular `typescript` package
-(`npm install -D typescript@rc`), where the `tsc` binary *is* the native
-compiler. Microsoft reports it as often about 10x faster, with type-checking
-behavior structurally identical to 6.0. Key caveat: a stable programmatic
+As of September 2026: **TypeScript 7.0 is GA** (2026-07-08) and is what
+`npm install -D typescript` installs — the `tsc` binary *is* the native Go
+compiler, reported as often about 10x faster, with type-checking and CLI
+behavior made compatible with 6.0. TypeScript 6.0 (March 2026) is the last
+release built on the JavaScript codebase and stays supported as the fallback.
+What 7.0 makes hard errors (6.0 only deprecated them, and `ignoreDeprecations:
+"6.0"` no longer exists as an escape hatch): `target: "es5"` and
+`downlevelIteration`, `baseUrl` (fold the prefix into `paths` targets),
+`moduleResolution: "node"/"node10"/"classic"` (use `nodenext` or `bundler`),
+`module: "amd"/"umd"/"systemjs"/"none"` and `outFile`, `esModuleInterop:
+false` / `allowSyntheticDefaultImports: false` / `alwaysStrict: false`, the
+`module` keyword for namespaces, and `assert { type: "json" }` (use `with`).
+Defaults that changed for configs that omit them: `strict` and
+`noUncheckedSideEffectImports` → `true`, `module` → `esnext`, `types` → `[]`
+(list `["node"]` etc. explicitly), `rootDir` → the tsconfig directory (add
+`"rootDir": "./src"` if emit paths shift), `stableTypeOrdering` → `true` and
+not switchable. `tsc file.ts` next to a tsconfig now needs `--ignoreConfig`.
+Dual-install pattern for tooling that still needs the 6.x API: alias
+`"typescript": "npm:@typescript/typescript6@^6.0.2"` (ships `tsc6`) and
+`"@typescript/native": "npm:typescript@^7.0.2"` for the real `tsc` — and note
+editors then resolve through the 6.x alias, so a type native 7 rejects can
+still look green in the IDE; CI on native 7 is the signal. Key caveat: a stable programmatic
 compiler API is not planned before TypeScript 7.1, so API-dependent tooling
 (type-aware lint plugins, custom transformers, some editor integrations) may
-need the `@typescript/typescript6` compatibility package in the interim. The
-`@typescript/native-preview` package (binary `tsgo`) continues as the nightly
-channel. Everything in this section moves fast — verify at use time:
-https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-rc/
-and https://github.com/microsoft/typescript-go. The tsconfig blocks above avoid
-everything 6.0 deprecates or removes, so they remain valid on 7.x, where 6.0's
-deprecations become hard errors.
+need the `@typescript/typescript6` compatibility package in the interim.
+Nightlies now ship as `typescript@next` (7.1-dev); the `@typescript/native-preview`
+package (binary `tsgo`) is frozen at the 7.0 dev builds. Verify at use time:
+https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/ and
+https://github.com/microsoft/typescript-go. The tsconfig blocks above avoid
+everything 6.0 deprecated, so they are valid on 7.x as written.
